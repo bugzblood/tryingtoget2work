@@ -1,0 +1,264 @@
+<html>
+
+<head>
+    <title>STAKEDrop Daily Dividends Contract</title>
+    <script src="https://cdn.jsdelivr.net/npm/@metamask/web3-provider-engine@0.2.0/dist/web3-provider-engine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@metamask/web3-provider-engine/subproviders/hooked-wallet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@metamask/web3-provider-engine/subproviders/infura.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@metamask/web3.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.2.6/dist/web3.min.js"></script>
+
+    
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: url("https://i.pinimg.com/originals/d4/a1/63/d4a163d7b21c13667d756d2991c8b637.gif");
+            background-size: cover;
+            background-repeat: no-repeat;
+            font-family: sans-serif;
+            font-size: 14px;
+            color: #444;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        table {
+            margin-bottom: 20px;
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        th,
+        td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #f1f1f1;
+            font-weight: bold;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            border: 1px solid #ddd;
+            padding: 8px 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #f1f1f1;
+            border: 1px solid #ddd;
+            padding: 8px 10px;
+            cursor: pointer;
+        }
+
+        .error {
+            color: #ff0000;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" id="app">
+        <h1>STAKEDrop Daily Dividends Contract</h1>
+        <p>
+            This page allows you to interact with the Stakily Daily Dividends Contract.
+        </p>
+        <button onclick="connectToMetamask()">Connect to MetaMask</button>
+        <div v-if="web3">
+            <h2>Freeze tokens</h2>
+            <p>
+                You can freeze tokens to start earning daily dividends.
+            </p>
+            <p>
+                <label for="amount">Amount:</label>
+                <input type="number" name="amount" v-model="freezeAmount">
+            </p>
+            <p>
+                <button @click="freezeTokens">Freeze</button>
+            </p>
+            <p class="error" v-if="freezeError">{{ freezeError }}</p>
+
+            <h2>Unfreeze tokens</h2>
+            <p>
+                You can unfreeze tokens to stop earning daily dividends.
+            </p>
+            <p>
+                <label for="amount">Amount:</label>
+                <input type="number" name="amount" v-model="unfreezeAmount">
+            </p>
+            <p>
+                <button @click="unfreezeTokens">Unfreeze</button>
+            </p>
+            <p class="error" v-if="unfreezeError">{{ unfreezeError }}</p>
+
+            <h2>Withdraw dividends</h2>
+            <p>
+                You can withdraw your daily dividends.
+            </p>
+            <p>
+                <button @click="withdrawDividends">Withdraw</button>
+            </p>
+            <p class="error" v-if="withdrawError">{{ withdrawError }}</p>
+
+            <h2>Your balance</h2>
+            <table>
+                <tr>
+                    <th>Frozen tokens</th>
+                    <th>Unfrozen tokens</th>
+                    <th>Dividends</th>
+                </tr>
+                <tr>
+                    <td>{{ frozenTokens }}</td>
+                    <td>{{ unfrozenTokens }}</td>
+                    <td>{{ dividends }}</td>
+                </tr>
+            </table>
+        </div>
+        <div v-else>
+            <p>Please install MetaMask and unlock your account to use this page.</p>
+        </div>
+    </div>
+
+    <script>
+        
+        connectToMetamask().then(function (connected) {
+            if (connected) {
+                console.log("MetaMask is connected");
+            } else {
+                console.log("MetaMask is not connected");
+            }
+        });
+
+        const contractAbi = [
+            // insert contract ABI here
+        ];
+        const contractAddress = '0x272c5b27a66a95B300a4360950cdAFD5Ee3Ed550';
+        const web3 = new Web3(
+            new Web3.providers.Web3ProviderEngine(),
+            new MetaMaskConnect.Provider()
+        );
+
+        const stakily = new web3.eth.Contract(contractAbi, contractAddress);
+
+        const app = new Vue({
+            el: '#app',
+            data: {
+                web3: null,
+                freezeAmount: 0,
+                freezeError: null,
+                unfreezeAmount: 0,
+                unfreezeError: null,
+                withdrawError: null,
+                frozenTokens: 0,
+                unfrozenTokens: 0,
+                dividends: 0
+            },
+            mounted() {
+
+                // Check if a web3 instance is available
+                if (web3.currentProvider.isMetaMask === true) {
+                    // Set web3 provider
+                    this.web3 = web3;
+
+                    // Get account
+                    web3.eth.getAccounts().then(accounts => {
+                        const account = accounts[0];
+
+                        // Get balance
+                        stakily.methods.getBalance(account).call().then(balance => {
+                            this.frozenTokens = balance[0] / 1e18;
+                            this.unfrozenTokens = balance[1] / 1e18;
+                            this.dividends = balance[2] / 1e18;
+                        });
+                    });
+                }
+            },
+            methods: {
+                freezeTokens() {
+                    this.freezeError = null;
+
+                    // Get account
+                    web3.eth.getAccounts().then(accounts => {
+                        const account = accounts[0];
+
+                        // Freeze tokens
+                        stakily.methods.freeze(this.freezeAmount * 1e18).send({ from: account }).then(() => {
+                            // Get balance
+                            stakily.methods.getBalance(account).call().then(balance => {
+                                this.frozenTokens = balance[0] / 1e18;
+                                this.unfrozenTokens = balance[1] / 1e18;
+                                this.dividends = balance[2] / 1e18;
+                            });
+                        }).catch(err => {
+                            this.freezeError = err.message;
+                        });
+                    });
+                },
+                unfreezeToken() {
+                    this.unfreezeError = null;
+
+                    // Get account
+                    web3.eth.getAccounts().then(accounts => {
+                        const account = accounts[0];
+
+                        // Unfreeze tokens
+                        stakily.methods.unfreeze(this.unfreezeAmount * 1e18).send({ from: account }).then(() => {
+                            // Get balance
+                            stakily.methods.getBalance(account).call().then(balance => {
+                                this.frozenTokens = balance[0] / 1e18;
+                                this.unfrozenTokens = balance[1] / 1e18;
+                                this.dividends = balance[2] / 1e18;
+                            });
+                        }).catch(err => {
+                            this.unfreezeError = err.message;
+                        });
+                    });
+                },
+                withdrawDividends() {
+                    this.withdrawError = null;
+
+                    // Get account
+                    web3.eth.getAccounts().then(accounts => {
+                        const account = accounts[0];
+
+                        // Withdraw dividends
+                        stakily.methods.withdraw().send({ from: account }).then(() => {
+                            // Get balance
+                            stakily.methods.getBalance(account).call().then(balance => {
+                                this.frozenTokens = balance[0] / 1e18;
+                                this.unfrozenTokens = balance[1] / 1e18;
+                                this.dividends = balance[2] / 1e18;
+                            });
+                        }).catch(err => {
+                            this.withdrawError = err.message;
+                        });
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
